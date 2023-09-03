@@ -24,11 +24,11 @@ public class LazyClassTransformer {
     public byte[] transform() {
         reader.accept(node, 0);
 
-        if (!Config.INCLUDE_PRIVATE_METHODS) {
+        if (!Config.includePrivateMethods) {
             node.methods.removeIf(methodNode -> (methodNode.access & Opcodes.ACC_PRIVATE) != 0);
         }
 
-        if (!Config.INCLUDE_NATIVE_METHODS) {
+        if (!Config.includeNativeMethods) {
             node.methods.removeIf(methodNode -> (methodNode.access & Opcodes.ACC_NATIVE) != 0);
         }
 
@@ -76,19 +76,19 @@ public class LazyClassTransformer {
             }
         }
 
-        if (!Config.INCLUDE_PUB_STATIC_FIELDS) {
+        if (!Config.includePublicStaticFields) {
             node.fields.removeIf(fieldNode -> (fieldNode.access & Opcodes.ACC_STATIC) != 0 && (fieldNode.access & Opcodes.ACC_PUBLIC) != 0);
         }
 
-        if (!Config.INCLUDE_PUB_NON_STATIC_FIELDS) {
+        if (!Config.includePublicFields) {
             node.fields.removeIf(fieldNode -> (fieldNode.access & Opcodes.ACC_STATIC) == 0 && (fieldNode.access & Opcodes.ACC_PUBLIC) != 0);
         }
 
-        if (!Config.INCLUDE_PRI_NON_STATIC_FIELDS) {
+        if (!Config.includePrivateFields) {
             node.fields.removeIf(fieldNode -> (fieldNode.access & Opcodes.ACC_STATIC) == 0 && (fieldNode.access & Opcodes.ACC_PRIVATE) != 0);
         }
 
-        if (!Config.INCLUDE_PRI_STATIC_FIELDS) {
+        if (!Config.includePrivateStaticFields) {
             this.node.fields.removeIf(field -> (field.access & Opcodes.ACC_STATIC) != 0 && (field.access & Opcodes.ACC_PRIVATE) != 0);
         }
 

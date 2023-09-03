@@ -8,13 +8,13 @@ import java.util.List;
 public final class PackageUtils {
 
     public static boolean isExempt(String package0) {
-        if (Config.EXEMPT.isEmpty()) return false;
-        return matchPatterns(Config.EXEMPT, package0);
+        if (Config.packagesExemptFromStripping.isEmpty()) return false;
+        return matchPatterns(Config.packagesExemptFromStripping, package0);
     }
 
     public static boolean isExcluded(String package0) {
-        if (Config.EXCLUDE.isEmpty()) return false;
-        return matchPatterns(Config.EXCLUDE, package0);
+        if (Config.packagesExcludedFromOutput.isEmpty()) return false;
+        return matchPatterns(Config.packagesExcludedFromOutput, package0);
     }
 
     private static boolean matchPatterns(List<String> targets, String package0) {

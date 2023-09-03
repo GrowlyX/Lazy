@@ -103,7 +103,7 @@ public class Lazy {
                 }
             } catch (Exception e) {
                 System.out.println("Failed to read class: " + clazz.getName() + " - Class is compiled on a unsupported version of Java");
-                if (Config.VERBOSE) e.printStackTrace();
+                if (Config.doAdvancedLogging) e.printStackTrace();
                 System.out.println("Skipping class...");
             }
         }
@@ -131,13 +131,13 @@ public class Lazy {
         JarOutputStream jarOutputStream = new JarOutputStream(new BufferedOutputStream(new FileOutputStream(this.output.getAbsolutePath())), this.jar.getManifest());
 
         for (Map.Entry<String, byte[]> pack : this.results.entrySet()) {
-            if (Config.VERBOSE)  System.out.print(" .. Writing " + pack.getKey());
+            if (Config.doAdvancedLogging)  System.out.print(" .. Writing " + pack.getKey());
             JarEntry j = new JarEntry(pack.getKey());
             j.setSize(pack.getValue().length);
             jarOutputStream.putNextEntry(j);
             jarOutputStream.write(pack.getValue());
             jarOutputStream.closeEntry();
-            if (Config.VERBOSE)  System.out.print(" ... Done\n");
+            if (Config.doAdvancedLogging)  System.out.print(" ... Done\n");
         }
         jarOutputStream.flush();
         jarOutputStream.close();
