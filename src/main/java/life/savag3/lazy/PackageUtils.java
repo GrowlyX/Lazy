@@ -14,13 +14,27 @@ public class PackageUtils {
     }
 
     public boolean isExempt(String package0) {
-        if (config.getPackagesExemptFromStripping().isEmpty()) return false;
-        return matchPatterns(config.getPackagesExemptFromStripping(), package0);
+        if (config.getExemptPackages().isEmpty()) {
+            return config.getExemptionStrategy() == Config.ExemptionStrategy.BLACKLIST;
+        }
+
+        boolean matchResult = matchPatterns(
+            config.getExemptPackages(), package0
+        );
+
+        return (config.getExemptionStrategy() == Config.ExemptionStrategy.BLACKLIST) == matchResult;
     }
 
     public boolean isExcluded(String package0) {
-        if (config.getPackagesExcludedFromOutput().isEmpty()) return false;
-        return matchPatterns(config.getPackagesExcludedFromOutput(), package0);
+        if (config.getExcludedPackages().isEmpty()) {
+            return config.getExclusionStrategy() == Config.ExclusionStrategy.BLACKLIST;
+        }
+
+        boolean matchResult = matchPatterns(
+            config.getExcludedPackages(), package0
+        );
+
+        return (config.getExclusionStrategy() == Config.ExclusionStrategy.BLACKLIST) == matchResult;
     }
 
     private boolean matchPatterns(List<String> targets, String package0) {

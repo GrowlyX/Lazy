@@ -28,12 +28,28 @@ public class Config {
     // Format: package0/package1/package2/* - Exempt anything inside this package
     // Format: package0/*/package2 - Exempt anything with the root path `package0` and a sub package `package2`
     @Builder.Default
-    private List<String> packagesExemptFromStripping = new ArrayList<>();
+    private List<String> exemptPackages = new ArrayList<>();
     // Packages to be excluded from the output (These packages / classes are not included in the output jar)
     // Format: package0/package1/package2/* - Exclude anything inside this package
     // Format: package0/*/package2 - Exclude anything with the root path `package0` and a sub package `package2`
     @Builder.Default
-    private List<String> packagesExcludedFromOutput = new ArrayList<>();
+    private List<String> excludedPackages = new ArrayList<>();
+
+    public enum ExemptionStrategy {
+        WHITELIST, // By default, none are stripped
+        BLACKLIST // Only specified packages are not stripped
+    }
+
+    @Builder.Default
+    private ExemptionStrategy exemptionStrategy = ExemptionStrategy.BLACKLIST;
+
+    public enum ExclusionStrategy {
+        WHITELIST, // By default, none are included in the output
+        BLACKLIST // Only specified packages are excluded from the output
+    }
+
+    @Builder.Default
+    private ExclusionStrategy exclusionStrategy = ExclusionStrategy.BLACKLIST;
 
     // Include Public Fields in the output
     @Builder.Default
