@@ -1,15 +1,14 @@
 package life.savag3.lazy;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import lombok.Getter;
 import lombok.SneakyThrows;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Modifier;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Enumeration;
@@ -21,68 +20,88 @@ import java.util.jar.JarOutputStream;
 
 public class Lazy {
 
-    private JarFile jar;
-    private File output;
-    private final File original;
+    @NotNull
+    private final JarFile jar;
 
     private final HashMap<String, byte[]> results = new HashMap<>();
 
-    @Getter private final Gson gson;
-    @Getter private final Instant start;
+    @Getter
+    @Nullable
+    private Instant start;
 
-    public Lazy(String[] args) {
-        start = Instant.now();
+    @Getter
+    @NotNull
+    private final Config config;
 
-        this.gson = new GsonBuilder()
-                        .setPrettyPrinting()
-                        .disableHtmlEscaping()
-                        .serializeNulls()
-                        .excludeFieldsWithModifiers(Modifier.TRANSIENT, Modifier.VOLATILE)
-                        .create();
+    @NotNull
+    private final PackageUtils packageUtils;
+
+    public Long getElapsedTime() {
+        if (start == null) {
+            return 0L;
+        }
+
+        return System.currentTimeMillis() - this.start.toEpochMilli();
+    }
+
+    protected void debugLog(@NotNull String message) {
+        if (this.config.getDebugLogSink() == null) {
+            return;
+        }
+
+        this.config.getDebugLogSink().accept(message);
+    }
+
+    @NotNull
+    public static Lazy create(@NotNull File input, @NotNull File output) {
+        if (input.exists()) {
+            throw new IllegalStateException(
+                "Input jar file does not exist!"
+            );
+        }
+
+        return new Lazy(
+            Config
+                .builder()
+                .inputJar(input)
+                .outputJar(output)
+                .build()
+        );
+    }
+
+    @NotNull
+    public static Lazy create(@NotNull Config config) {
+        return new Lazy(config);
+    }
+
+    protected Lazy(@NotNull Config config) {
+        this.config = config;
+        this.packageUtils = new PackageUtils(this.config);
 
         // Print working paths for debugging and testing
-        System.out.println("Working Dir - " + new File("").getAbsolutePath());
-        System.out.println(" ");
+        debugLog("Working Dir - " + new File("").getAbsolutePath());
+        debugLog(" ");
+        debugLog("Reading Jar... (" + this.config.getInputJar().getAbsolutePath() + ")");
 
-        // Parse args
-        if (args.length < 2) {
-            System.out.println("Invalid argument counts. Found " + args.length + ", Required 2");
-            System.out.println("Usage: java -jar <Path/To/Input.jar> <Path/To/Output.jar> [Path/To/Config.json]");
-            System.out.println("Map: `<>` fields are required, `[]` fields are optional");
-            System.exit(1);
-        }
-
-        if (args.length == 3) {
-            // Read the config file from disk if it exists
-            System.out.println("Reading Config... (" + args[2] + ")");
-            Config.load(this, args[2]);
-        } else {
-            // Create a new config file if one doesn't exist
-            Config.load(this);
-        }
-
-        this.original = new File(args[0]);
-
-        System.out.println("Reading Jar... (" + original.getAbsolutePath() + ")");
         try {
-            this.jar = new JarFile(original);
+            this.jar = new JarFile(this.config.getInputJar());
         } catch (IOException e) {
-            System.out.println("Failed to read jar file. (" + original.getAbsolutePath() + ")");
-            e.printStackTrace();
-            System.exit(1);
-            return;
+            throw new IllegalStateException(
+                "Failed to read jar file " + this.config.getInputJar().getAbsolutePath()
+            );
         }
-
-        this.output = new File(args[1]);
 
         try {
-            this.output.createNewFile();
+            this.config.getOutputJar().createNewFile();
         } catch (IOException er) {
-            System.out.println("Couldn't create output file... exiting");
-            er.printStackTrace();
-            System.exit(1);
-            return;
+            throw new IllegalStateException(
+                "Couldn't create output file... exiting"
+            );
         }
+    }
+
+    public void start() {
+        this.start = Instant.now();
 
         // Enumerate over jarfile entries
         for (Enumeration<JarEntry> list = jar.entries(); list.hasMoreElements(); ) {
@@ -92,19 +111,18 @@ public class Lazy {
             if (!clazz.getName().endsWith(".class")) continue;
             try {
                 // Check if a class is excluded | true ? skip : process
-                if (PackageUtils.isExcluded(clazz.getName())) continue;
+                if (this.packageUtils.isExcluded(clazz.getName())) continue;
                 // Check if a class is exempt | true ? write whole class to output : write stripped class to output
-                System.out.println("Processing " + clazz.getName());
-                if (PackageUtils.isExempt(clazz.getName())) {
+                debugLog("Processing " + clazz.getName());
+                if (this.packageUtils.isExempt(clazz.getName())) {
                     add(clazz.getName(), jar.getInputStream(clazz).readAllBytes());
                 } else {
-                    LazyClassTransformer transformer = new LazyClassTransformer(jar.getInputStream(clazz).readAllBytes());
+                    LazyClassTransformer transformer = new LazyClassTransformer(jar.getInputStream(clazz).readAllBytes(), this.config);
                     add(clazz.getName(), transformer.transform());
                 }
             } catch (Exception e) {
-                System.out.println("Failed to read class: " + clazz.getName() + " - Class is compiled on a unsupported version of Java");
-                if (Config.doAdvancedLogging) e.printStackTrace();
-                System.out.println("Skipping class...");
+                debugLog("Failed to read class: " + clazz.getName() + " - " + e.getMessage());
+                debugLog("Skipping class...");
             }
         }
 
@@ -126,25 +144,32 @@ public class Lazy {
      */
     @SneakyThrows
     public void pack() {
-        System.out.println(" ");
-        System.out.println(" Writing new Jar (" + this.output.getAbsolutePath() + ")");
-        JarOutputStream jarOutputStream = new JarOutputStream(new BufferedOutputStream(new FileOutputStream(this.output.getAbsolutePath())), this.jar.getManifest());
+        String outputJarPath = this.getConfig().getOutputJar().getAbsolutePath();
+        debugLog(" ");
+        debugLog(" Writing new Jar (" + outputJarPath + ")");
+
+        JarOutputStream jarOutputStream = new JarOutputStream(
+            new BufferedOutputStream(
+                new FileOutputStream(this.getConfig().getOutputJar().getAbsolutePath())
+            ),
+            this.jar.getManifest()
+        );
 
         for (Map.Entry<String, byte[]> pack : this.results.entrySet()) {
-            if (Config.doAdvancedLogging)  System.out.print(" .. Writing " + pack.getKey());
+            if (this.getConfig().isDoAdvancedLogging())  debugLog(" .. Writing " + pack.getKey());
             JarEntry j = new JarEntry(pack.getKey());
             j.setSize(pack.getValue().length);
             jarOutputStream.putNextEntry(j);
             jarOutputStream.write(pack.getValue());
             jarOutputStream.closeEntry();
-            if (Config.doAdvancedLogging)  System.out.print(" ... Done\n");
+            if (this.getConfig().isDoAdvancedLogging())  debugLog(" ... Done\n");
         }
         jarOutputStream.flush();
         jarOutputStream.close();
         jar.close();
 
-        System.out.println(" ");
-        System.out.println("Jar saved to " + this.output.getAbsolutePath() + " in " + Duration.between(start, Instant.now()).toMillis() + "ms");
-        System.out.println("Original Size: " + this.original.length() + " bytes, New size: " + this.output.length() + " bytes; Size reduced by " + (Math.abs((1.0f - ((float) this.output.length() / (float) this.original.length()))) * 100.0f) + "%");
+        debugLog(" ");
+        debugLog("Jar saved to " + outputJarPath + " in " + Duration.between(start, Instant.now()).toMillis() + "ms");
+        debugLog("Original Size: " + this.getConfig().getInputJar().length() + " bytes, New size: " + this.getConfig().getInputJar().length() + " bytes; Size reduced by " + (Math.abs((1.0f - ((float) this.getConfig().getOutputJar().length() / (float) this.getConfig().getInputJar().length()))) * 100.0f) + "%");
     }
 }

@@ -1,56 +1,72 @@
 package life.savag3.lazy;
 
 import lombok.Builder;
+import lombok.Getter;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
+@Getter
 @Builder
 public class Config {
+
+    @NotNull
+    private File inputJar;
+
+    @NotNull
+    private File outputJar;
+
+    @Nullable
+    @Builder.Default
+    private Consumer<String> debugLogSink = System.out::println;
 
     // Packages exempt from being stripped by Lazy (Essentially Skipping & adding to output jar)
     // Format: package0/package1/package2/* - Exempt anything inside this package
     // Format: package0/*/package2 - Exempt anything with the root path `package0` and a sub package `package2`
     @Builder.Default
-    public List<String> packagesExemptFromStripping = new ArrayList<>();
+    private List<String> packagesExemptFromStripping = new ArrayList<>();
     // Packages to be excluded from the output (These packages / classes are not included in the output jar)
     // Format: package0/package1/package2/* - Exclude anything inside this package
     // Format: package0/*/package2 - Exclude anything with the root path `package0` and a sub package `package2`
     @Builder.Default
-    public List<String> packagesExcludedFromOutput = new ArrayList<>();
+    private List<String> packagesExcludedFromOutput = new ArrayList<>();
 
     // Include Public Fields in the output
     @Builder.Default
-    public boolean includePublicStaticFields = true;
+    private boolean includePublicStaticFields = true;
     // Include Private Fields in the output
     @Builder.Default
-    public boolean includePrivateStaticFields = true;
+    private boolean includePrivateStaticFields = true;
     // Include Public Fields in the output
     @Builder.Default
-    public boolean includePublicFields = true;
+    private boolean includePublicFields = true;
     // Include Private Fields in the output
     @Builder.Default
-    public boolean includePrivateFields = true;
+    private boolean includePrivateFields = true;
     // Include Private Methods in the output
     @Builder.Default
-    public boolean includePrivateMethods = false;
+    private boolean includePrivateMethods = false;
     // Include Native Methods in the output
     @Builder.Default
-    public boolean includeNativeMethods = false;
+    private boolean includeNativeMethods = false;
     // Include abstract classes in the output
     @Builder.Default
     @Deprecated
-    public boolean includeAbstractClasses = true;
+    private boolean includeAbstractClasses = true;
     // Include method content for default interface classes
     @Builder.Default
     @Deprecated
-    public boolean includeInterfaceMethods = true;
+    private boolean includeInterfaceMethods = true;
     // Include enum data in the output
     @Builder.Default
     @Deprecated
-    public boolean includeEnumData = true;
+    private boolean includeEnumData = true;
 
     // Do advanced logging
     @Builder.Default
-    public boolean doAdvancedLogging = true;
+    private boolean doAdvancedLogging = true;
 }

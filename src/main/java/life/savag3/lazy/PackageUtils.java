@@ -1,23 +1,29 @@
 package life.savag3.lazy;
 
-import lombok.experimental.UtilityClass;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-@UtilityClass
-public final class PackageUtils {
+public class PackageUtils {
 
-    public static boolean isExempt(String package0) {
-        if (Config.packagesExemptFromStripping.isEmpty()) return false;
-        return matchPatterns(Config.packagesExemptFromStripping, package0);
+    @NotNull
+    private final Config config;
+
+    public PackageUtils(@NotNull Config config) {
+        this.config = config;
     }
 
-    public static boolean isExcluded(String package0) {
-        if (Config.packagesExcludedFromOutput.isEmpty()) return false;
-        return matchPatterns(Config.packagesExcludedFromOutput, package0);
+    public boolean isExempt(String package0) {
+        if (config.getPackagesExemptFromStripping().isEmpty()) return false;
+        return matchPatterns(config.getPackagesExemptFromStripping(), package0);
     }
 
-    private static boolean matchPatterns(List<String> targets, String package0) {
+    public boolean isExcluded(String package0) {
+        if (config.getPackagesExcludedFromOutput().isEmpty()) return false;
+        return matchPatterns(config.getPackagesExcludedFromOutput(), package0);
+    }
+
+    private boolean matchPatterns(List<String> targets, String package0) {
         top: for (String excluded : targets) {
             if (excluded.equals(package0)) return true;
             if (excluded.contains("*")) {

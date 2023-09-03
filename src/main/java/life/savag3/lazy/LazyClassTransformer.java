@@ -1,5 +1,6 @@
 package life.savag3.lazy;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -15,7 +16,11 @@ public class LazyClassTransformer {
     private final ClassReader reader;
     private final ClassNode node;
 
-    public LazyClassTransformer(byte[] bytes) {
+    @NotNull
+    private final Config config;
+
+    public LazyClassTransformer(byte[] bytes, @NotNull Config config) {
+        this.config = config;
         this.writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         this.reader = new ClassReader(bytes);
         this.node = new ClassNode();
@@ -24,11 +29,11 @@ public class LazyClassTransformer {
     public byte[] transform() {
         reader.accept(node, 0);
 
-        if (!Config.includePrivateMethods) {
+        if (!this.config.isIncludePrivateMethods()) {
             node.methods.removeIf(methodNode -> (methodNode.access & Opcodes.ACC_PRIVATE) != 0);
         }
 
-        if (!Config.includeNativeMethods) {
+        if (!this.config.isIncludeNativeMethods()) {
             node.methods.removeIf(methodNode -> (methodNode.access & Opcodes.ACC_NATIVE) != 0);
         }
 
@@ -76,19 +81,19 @@ public class LazyClassTransformer {
             }
         }
 
-        if (!Config.includePublicStaticFields) {
+        if (!this.config.isIncludePublicStaticFields()) {
             node.fields.removeIf(fieldNode -> (fieldNode.access & Opcodes.ACC_STATIC) != 0 && (fieldNode.access & Opcodes.ACC_PUBLIC) != 0);
         }
 
-        if (!Config.includePublicFields) {
+        if (!this.config.isIncludePublicFields()) {
             node.fields.removeIf(fieldNode -> (fieldNode.access & Opcodes.ACC_STATIC) == 0 && (fieldNode.access & Opcodes.ACC_PUBLIC) != 0);
         }
 
-        if (!Config.includePrivateFields) {
+        if (!this.config.isIncludePrivateFields()) {
             node.fields.removeIf(fieldNode -> (fieldNode.access & Opcodes.ACC_STATIC) == 0 && (fieldNode.access & Opcodes.ACC_PRIVATE) != 0);
         }
 
-        if (!Config.includePrivateStaticFields) {
+        if (!this.config.isIncludePrivateStaticFields()) {
             this.node.fields.removeIf(field -> (field.access & Opcodes.ACC_STATIC) != 0 && (field.access & Opcodes.ACC_PRIVATE) != 0);
         }
 
